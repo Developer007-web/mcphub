@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>MCPHub Registry</title>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<header>
+<h1>MCPHub</h1>
+
+<input
+type="text"
+id="searchInput"
+placeholder="Search MCP servers..."
+>
+
+<button id="assistantBtn">
+AI Assistant
+</button>
+</header>
+
+<main>
+
+<section id="registry"></section>
+
+<section class="submit-section">
+
+<h2>Submit MCP Server</h2>
+
+<input id="serverName" placeholder="Server Name">
+
+<input id="author" placeholder="Author">
+
+<input id="githubUrl" placeholder="GitHub URL">
+
+<button id="generateBtn">
+Generate Metadata
+</button>
+
+<button id="submitBtn">
+Submit Server
+</button>
+
+</section>
+
+</main>
+
+<div id="modal" class="modal hidden">
+<div id="modalContent"></div>
+</div>
+
+<div id="assistantPanel" class="assistant hidden">
+
+<h3>MCP AI Assistant</h3>
+
+<textarea
+id="assistantPrompt"
+placeholder="Ask about MCP servers..."
+></textarea>
+
+<button id="askAssistant">
+Ask
+</button>
+
+<div id="assistantResponse"></div>
+
+</div>
+
+<script src="groq.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

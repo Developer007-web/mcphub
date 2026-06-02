@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Filesystem MCP",
+    "author": "Anthropic",
+    "description": "Access and manage local files through MCP.",
+    "tags": ["filesystem", "files", "storage"],
+    "category": "File Management",
+    "github": "https://github.com/modelcontextprotocol/servers",
+    "install": "npx @modelcontextprotocol/server-filesystem"
+  },
+  {
+    "id": 2,
+    "name": "GitHub MCP",
+    "author": "Community",
+    "description": "Interact with GitHub repositories and issues.",
+    "tags": ["github", "git", "development"],
+    "category": "Development",
+    "github": "https://github.com/modelcontextprotocol/servers",
+    "install": "npx @modelcontextprotocol/server-github"
+  }
+]
