@@ -4,31 +4,56 @@ import API from "../api/api";
 
 export default function Dashboard() {
   const [servers, setServers] = useState([]);
+  const [stats, setStats] = useState({ totalServers: 0, totalViews: 0, totalLikes: 0 });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => { fetchServers(); }, []);
+  useEffect(() => {
+    Promise.all([fetchServers(), fetchStats(), fetchUser()]);
+  }, []);
 
   const fetchServers = async () => {
     try {
       const { data } = await API.get("/dashboard/my-servers");
       setServers(data.servers || []);
     } catch (err) {
-      console.log(err);
+      console.error("Failed to fetch servers:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const { data } = await API.get("/dashboard/my-stats");
+      if (data.success) setStats(data);
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+  };
+
+  const fetchUser = async () => {
+    try {
+      const { data } = await API.get("/auth/me");
+      if (data.success) setUser(data.user);
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    }
+  };
+
   const handleDelete = async (id) => {
     setDeletingId(id);
+    setDeleteError("");
     try {
       await API.delete(`/dashboard/my-servers/${id}`);
       setServers(prev => prev.filter(s => s.id !== id));
+      setStats(prev => ({ ...prev, totalServers: prev.totalServers - 1 }));
     } catch (err) {
-      alert("Failed to delete server. Please try again.");
+      setDeleteError("Failed to delete server. Please try again.");
     } finally {
       setDeletingId(null);
       setConfirmId(null);
@@ -62,9 +87,12 @@ export default function Dashboard() {
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
               This action cannot be undone. The server will be permanently removed from the registry.
             </p>
+            {deleteError && (
+              <p style={{ color: "#f87171", fontSize: "0.85rem", marginBottom: "1rem" }}>{deleteError}</p>
+            )}
             <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
               <button
-                onClick={() => setConfirmId(null)}
+                onClick={() => { setConfirmId(null); setDeleteError(""); }}
                 style={{
                   padding: "9px 24px", borderRadius: "8px", fontSize: "0.9rem",
                   background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
@@ -90,23 +118,28 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Sidebar */}
       <div className="sidebar">
         <div className="sidebar-logo">MCPHub</div>
+        {user && (
+          <div style={{ padding: "0 12px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: "12px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>@{user.username}</div>
+            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", marginTop: "2px" }}>{user.email}</div>
+          </div>
+        )}
         <div className="sidebar-nav">
           <button className="sidebar-btn active">⬡ Dashboard</button>
-          <button className="sidebar-btn" onClick={() => navigate("/add-server")}>
-            + Add Server
-          </button>
+          <button className="sidebar-btn" onClick={() => navigate("/add-server")}>+ Add Server</button>
+          <button className="sidebar-btn" onClick={() => navigate("/explore")}>⊕ Explore</button>
         </div>
-        <button className="sidebar-btn logout" onClick={logout}>
-          ↩ Logout
-        </button>
+        <button className="sidebar-btn logout" onClick={logout}>↩ Logout</button>
       </div>
 
+      {/* Main content */}
       <div className="dashboard-content">
         <div className="dashboard-header">
           <div>
-            <h1>Welcome back 👋</h1>
+            <h1>Welcome back{user ? `, ${user.username}` : ""} 👋</h1>
             <p>Manage and publish your MCP servers</p>
           </div>
           <button className="add-btn" onClick={() => navigate("/add-server")}>
@@ -114,30 +147,29 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Real stats */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-label">Total Servers</div>
-            <div className="stat-value">{servers.length}</div>
+            <div className="stat-label">My Servers</div>
+            <div className="stat-value">{stats.totalServers}</div>
             <div className="stat-sub">published</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Registry Status</div>
-            <div className="stat-value" style={{ fontSize: "22px", paddingTop: "6px" }}>Active</div>
-            <div className="stat-sub">all systems normal</div>
+            <div className="stat-label">Total Views</div>
+            <div className="stat-value">{stats.totalViews.toLocaleString()}</div>
+            <div className="stat-sub">across all servers</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Uptime</div>
-            <div className="stat-value">100%</div>
-            <div className="stat-sub">last 30 days</div>
+            <div className="stat-label">Total Likes</div>
+            <div className="stat-value">{stats.totalLikes.toLocaleString()}</div>
+            <div className="stat-sub">from the community</div>
           </div>
         </div>
 
         <div className="section-heading">My MCP Servers</div>
 
         {loading ? (
-          <div className="loading-spinner">
-            <div className="spinner"></div>
-          </div>
+          <div className="loading-spinner"><div className="spinner"></div></div>
         ) : servers.length === 0 ? (
           <div className="empty-state">
             <h3>No servers yet</h3>
@@ -160,28 +192,26 @@ export default function Dashboard() {
                     background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)",
                     borderRadius: "6px", padding: "5px 8px", cursor: "pointer",
                     color: "#f87171", fontSize: "13px", lineHeight: 1,
-                    transition: "all 0.2s",
-                    display: "flex", alignItems: "center", gap: "4px"
+                    transition: "all 0.2s", display: "flex", alignItems: "center", gap: "4px"
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = "rgba(220,38,38,0.25)";
-                    e.currentTarget.style.borderColor = "rgba(220,38,38,0.5)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = "rgba(220,38,38,0.1)";
-                    e.currentTarget.style.borderColor = "rgba(220,38,38,0.25)";
-                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.25)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.5)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.25)"; }}
                 >
                   🗑️ Delete
                 </button>
 
                 <h3 style={{ paddingRight: "80px" }}>{server.name}</h3>
                 {server.description && <p>{server.description}</p>}
+
+                {/* Views and likes */}
+                <div style={{ display: "flex", gap: "14px", marginBottom: "12px", fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
+                  <span>👁 {server.views || 0} views</span>
+                  <span>♥ {server.likes || 0} likes</span>
+                </div>
+
                 {server.tags?.length > 0 && (
                   <div className="server-tags">
-                    {server.tags.map(tag => (
-                      <span key={tag} className="tag">{tag}</span>
-                    ))}
+                    {server.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}
                   </div>
                 )}
                 {server.github_url && (

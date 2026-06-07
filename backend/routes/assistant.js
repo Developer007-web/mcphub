@@ -1,11 +1,8 @@
 import express from "express";
+import { chat } from "../controllers/assistantController.js";
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.json({
-    message: "Assistant route working"
-  });
-});
+router.post("/chat", chat);
 
 export default router;

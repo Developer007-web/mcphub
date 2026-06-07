@@ -1,7 +1,7 @@
 {
-  "name": "frontend",
+  "name": "mcphub-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "axios": "^1.17.0",
-    "pg": "^8.21.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.16.0"
