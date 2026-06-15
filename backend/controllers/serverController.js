@@ -5,37 +5,21 @@ export const createServer = async (req, res) => {
   try {
     const { name, description, github_url, tags, install_command } = req.body;
 
-    // Input validation
     if (!name || name.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Server name is required and must be at least 2 characters",
-      });
+      return res.status(400).json({ success: false, message: "Server name is required and must be at least 2 characters" });
     }
-
     if (name.trim().length > 80) {
-      return res.status(400).json({
-        success: false,
-        message: "Server name must be 80 characters or fewer",
-      });
+      return res.status(400).json({ success: false, message: "Server name must be 80 characters or fewer" });
     }
-
     if (description && description.trim().length > 500) {
-      return res.status(400).json({
-        success: false,
-        message: "Description must be 500 characters or fewer",
-      });
+      return res.status(400).json({ success: false, message: "Description must be 500 characters or fewer" });
     }
-
     if (github_url && github_url.trim().length > 0) {
       try {
         const url = new URL(github_url);
         if (!["http:", "https:"].includes(url.protocol)) throw new Error();
       } catch {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid GitHub URL",
-        });
+        return res.status(400).json({ success: false, message: "Invalid GitHub URL" });
       }
     }
 
@@ -63,6 +47,68 @@ export const createServer = async (req, res) => {
   }
 };
 
+export const updateServer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, github_url, tags, install_command } = req.body;
+
+    // Verify ownership
+    const existing = await pool.query(
+      "SELECT * FROM servers WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Server not found or you don't have permission to edit it" });
+    }
+
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({ success: false, message: "Server name must be at least 2 characters" });
+    }
+    if (name.trim().length > 80) {
+      return res.status(400).json({ success: false, message: "Server name must be 80 characters or fewer" });
+    }
+    if (description && description.trim().length > 500) {
+      return res.status(400).json({ success: false, message: "Description must be 500 characters or fewer" });
+    }
+    if (github_url && github_url.trim().length > 0) {
+      try {
+        const url = new URL(github_url);
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+      } catch {
+        return res.status(400).json({ success: false, message: "Invalid GitHub URL" });
+      }
+    }
+
+    const cleanTags = Array.isArray(tags)
+      ? tags.map(t => t.trim().toLowerCase()).filter(Boolean).slice(0, 8)
+      : [];
+
+    const { rows } = await pool.query(
+      `UPDATE servers SET
+        name = $1,
+        description = $2,
+        github_url = $3,
+        install_command = $4,
+        tags = $5
+       WHERE id = $6 AND user_id = $7
+       RETURNING *`,
+      [
+        name.trim(),
+        description?.trim() || null,
+        github_url?.trim() || null,
+        install_command?.trim() || null,
+        cleanTags,
+        id,
+        req.user.id,
+      ]
+    );
+
+    return res.json({ success: true, server: rows[0] });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export const getServers = async (req, res) => {
   try {
     const { search, tag, sort = "views", page = 1, limit = 50 } = req.query;
@@ -73,11 +119,7 @@ export const getServers = async (req, res) => {
     let i = 1;
 
     if (search) {
-      query += ` AND (
-        name ILIKE $${i} OR
-        description ILIKE $${i} OR
-        $${i + 1} = ANY(tags)
-      )`;
+      query += ` AND (name ILIKE $${i} OR description ILIKE $${i} OR $${i + 1} = ANY(tags))`;
       params.push(`%${search}%`, search.toLowerCase());
       i += 2;
     }
@@ -106,13 +148,8 @@ export const getServers = async (req, res) => {
 
 export const getServerById = async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      "SELECT * FROM servers WHERE id = $1",
-      [req.params.id]
-    );
-    if (!rows[0]) {
-      return res.status(404).json({ success: false, message: "Server not found" });
-    }
+    const { rows } = await pool.query("SELECT * FROM servers WHERE id = $1", [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ success: false, message: "Server not found" });
     return res.json({ success: true, server: rows[0] });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
